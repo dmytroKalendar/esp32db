@@ -46,6 +46,17 @@ const enum TYPE COLUMN_TYPES[NUM_COLUMNS] = {INT};
 */
 #define STRING_LEN 32
 
+
+unsigned char ROW_SIZE;
+unsigned char COLUMN_SIZES[NUM_COLUMNS];
+
+
+void* table;
+int partition_sizes[2];
+short num_rows; // rows already in the table
+short max_num_rows;
+
+
 void printMemoryStats() {
     Serial.println("=== Memory Stats ===");
 
@@ -68,40 +79,41 @@ void printMemoryStats() {
     Serial.println("====================\n");
 }
 
-
-unsigned char ROW_SIZE;
-unsigned char COLUMN_SIZES[NUM_COLUMNS];
-
-
-void* table;
-short num_rows = 0;
-int table_size = 0;
-
 /*
     Prints entire table
 */
 void print_table(){
-
+    // go row by row *num_rows* times and call print_row
 }
 
 /*
     Adds new row to the table
 */
-void add_row(int n){
-    if (table_size > (num_rows + 1)*ROW_SIZE){ // table has place for one more row
-        // add new row
-        void* new_row = table + num_rows*ROW_SIZE;
-        *(int*) new_row = n;
-        Serial.printf("Added row: %d \n", *(int*) new_row);
-        num_rows++;
-    } else{
-        // do nothing
-        return;
-    }
+bool add_row(void* row){
+    if (num_rows >= max_num_rows) return false;// table has place for one more row
+
+    void* new_row = table + num_rows*ROW_SIZE;
+    *(int*) new_row = *(int*) row;
+    Serial.printf("Added row: %d \n", *(int*) new_row);
+    num_rows++;
+
+    return true;
+}
+
+/*
+    Prints an entire row using Serial.printf
+*/
+void print_row(void* row){
+    // get num of columns
+    // go through every column
+    // determine type of data in that column
+    // add data to the output (<<<) 
+    // move pointer by n bytes, where n is the size of a column that was already processed (COLUMN_SIZES)
 }
 
 /*
     Calculates the size of individual rows (in bytes) from the defined COLUMN_TYPES
+    and set column sizes in COLUMN_SIZES
 */
 unsigned char calculate_row_size(){
     unsigned char row = 0;
@@ -127,7 +139,7 @@ unsigned char calculate_row_size(){
 
 void setup() {
     Serial.begin(115200);
-    delay(1000); // Allow time for serial monitor to start
+    delay(5000); // Allow time for serial monitor to start
 
     heap_caps_print_heap_info(MALLOC_CAP_8BIT);
 
@@ -140,7 +152,8 @@ void setup() {
         if (table == NULL) {
             Serial.println("malloc failed!");
         }
-        table_size = free_memory / 2;
+        partition_sizes[0] = free_memory;
+        max_num_rows = (partition_sizes[0] + partition_sizes[1]) / ROW_SIZE;
     } else{
         pinMode(2,OUTPUT);
         digitalWrite(2,HIGH);
@@ -150,13 +163,13 @@ void setup() {
     }
 
     printMemoryStats();
-
+    
 }
 
 int n = 0;
 void loop() {
 
-    add_row(n);
+    add_row(&n);
     n++;
     delay(1000);
 
